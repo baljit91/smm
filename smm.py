@@ -1,41 +1,21 @@
 import csv
 import tweepy
 import os.path
+from nltk.corpus import stopwords
+from nltk.stem.porter import PorterStemmer
+from sklearn.feature_extraction.text import TfidfVectorizer
+import pandas as pd
+from sklearn.cluster import KMeans
+from sklearn.metrics import adjusted_rand_score
+import string
+from sklearn.feature_extraction.text import TfidfVectorizer
 
 
-def preprocessing(tweet):
-    
+DATA_PATH = os.path.join(os.getcwd(),"data")
+stopwords = stopwords.words("english")
+porter_stemmer = PorterStemmer()
 
-
-#get tweets from twitter
-def get_all_tweets(screen_name):
-
-    API_KEY = "Xa6PPa9nTbNvfMrK7VC61DKRi"
-    API_SECRET = "4oSOCpAP7zac4wb9aWzAvmNyY2gqzBIiBf7tsSFoFySlppTHej"
-
-    auth = tweepy.AppAuthHandler(API_KEY, API_SECRET)
-    api = tweepy.API(auth, wait_on_rate_limit=True, wait_on_rate_limit_notify=True)
-
-    alltweets = []
-    new_tweets = api.user_timeline(screen_name=screen_name, count=200)
-    alltweets.extend(new_tweets)
-    
-    outtweets = [[tweet.text.encode("utf-8")] for tweet in alltweets]
-    return outtweets
-        
-#write twwets into csv file
-def write_into_file(input_tweets,handler_name):
-    save_path = '/Users/Singh/Data'
-    completeName = os.path.join(save_path, handler_name + '.csv') 
-    with open(completeName, 'w') as f:
-        writer = csv.writer(f)
-        #writer.writerow(["text & classifier"])
-        writer.writerows(input_tweets)
-        f.close()
-
-        #white house
-
-hlist = ["whitehouse","jesseclee44",
+hlist = ["whitehouse",
          #health
          "cdc_ehealth","CDCgov","healthcaregov","healthfinder",
          #fcc
@@ -48,104 +28,87 @@ hlist = ["whitehouse","jesseclee44",
          #Defence
          ,"usarmy","ArmedwScience","usairforce","usnavy","uscoastguard",
          #weather
-         "usnwsgov","NHC_Atlantic",
+         "nws","NHC_Atlantic",
          #finance
-         "libertystecon","GFOA","NYFed_news","sbagov","USTreasury","FDICgov"]
+         "libertystecon","GFOA","sbagov","USTreasury","FDICgov"]
 
-for hand in hlist:
-    handler_name = hand
-    handler_tweets = get_all_tweets(handler_name)
-    #write the csv
-    write_into_file(handler_tweets,handler_name)
-    print(hand)
+def pre_processing(tweet):
+    tweet = tweet.lower()
+    res = ''.join([i if ord(i) < 128 and not i.isspace() else ' ' for i in tweet])
+    res = res.strip()
+    res_list = res.split(" ")
+    res_list = [word.lower().strip() for word in res_list]
+    res_list = [word.translate(None,string.punctuation) for word in res_list]
+    res = " ".join([porter_stemmer.stem(word) for word in res_list if word not in stopwords and "http" not in word and word.strip() and word not in string.punctuation and word != "rt"])
+    return res
 
+def get_tweets(screen_name):
 
+    API_KEY = "Xa6PPa9nTbNvfMrK7VC61DKRi"
+    API_SECRET = "4oSOCpAP7zac4wb9aWzAvmNyY2gqzBIiBf7tsSFoFySlppTHej"
 
+    auth = tweepy.AppAuthHandler(API_KEY, API_SECRET)
+    api = tweepy.API(auth, wait_on_rate_limit=True, wait_on_rate_limit_notify=True)
 
+    alltweets = []
+    new_tweets = api.user_timeline(screen_name=screen_name, count=200)
+    alltweets.extend(new_tweets)
 
+    outtweets = [tweet.text.encode("utf-8") for tweet in alltweets]
+    outtweets= [[pre_processing(tweet)] for tweet in outtweets]
+    return outtweets
 
-
-    
-#This depends on the results we are obtaining below.More like a feedback system
-
-
-#read from csv files
-all_tweets = []
-import csv
-save_path = '/Users/Singh/Data'
-
-for handler_name in hlist:
+def write_to_df(input_tweets,handler_name):
+    save_path = DATA_PATH
+    handler_name = "_".join([word.lower() for word in handler_name.split(" ")])
     completeName = os.path.join(save_path, handler_name + '.csv')
-    with open(completeName) as csvDataFile:
-        csvReader = csv.reader(csvDataFile)
-        for row in csvReader:
-            all_tweets.append(row)
-    print(handler_name)
-            #print(row)
-print(len(all_tweets))
+    df = pd.DataFrame(input_tweets,columns = ["text"])
+    df.index.name = "Index"
+    df.to_csv(os.path.join(save_path,completeName))
+    print "The csv file is saved {0}".format(completeName)
 
 
 
+def convert_to_df(dir_name):
+    df = pd.DataFrame()
+    for f in os.listdir(dir_name):
+        path =  os.path.join(DATA_PATH,f)
+        print path
+        df = pd.concat([df,pd.read_csv(path)])
+    return df
+
+    # X = []
+    # for i in range(0,len(all_tweets)):
+    #     X.append(all_tweets[i][0])
+    # df = pd.DataFrame(X)
+    # return df
+
+def bag_of_words(dataframe,file_location):
+    tf = TfidfVectorizer(stop_words="english")
+    transformed_input = tf.fit_transform(dataframe)
+    transformed_input = transformed_input.toarray()
+    return tf
+
+
+def train_model(clusters=3):
+    model = KMeans(n_clusters=clusters)
+    return model
+#
+for handle in hlist:
+    tweet_list = get_tweets(handle)
+    write_to_df(tweet_list,handle)
 
 
 
-
-
-from sklearn.feature_extraction.text import TfidfVectorizer
-import pandas as pd
-
-print(all_tweets[0][0])
-
-X = []
-Y = []
-for i in range(0,len(all_tweets)):
-    X.append(all_tweets[i][0])
-    #Y.append(all_tweets[i][0][1])
-
-
-df = pd.DataFrame(X)
-X = df[0]
-
-#df = pd.DataFrame(Y)
-#Y = df[0]
-
-tf = TfidfVectorizer(stop_words="english",min_df = 35)
-transforemd_input = tf.fit_transform(X)
-transforemd_input = transforemd_input.toarray()
-
-
-
-
-
-
-
-
-
-from sklearn.cluster import KMeans
-from sklearn.metrics import adjusted_rand_score
-
-true_k = 8
-#model = KMeans(n_clusters=true_k, init='k-means++', max_iter=100, n_init=1)
-model = KMeans(init='k-means++', max_iter=100, n_init=1)
-model.fit(transforemd_input)
-
-
-
-
-
-
-
-
-
-
-from sklearn.feature_extraction.text import TfidfVectorizer
-
-print("Top terms per cluster:")
-order_centroids = model.cluster_centers_.argsort()[:, ::-1]
-terms = tf.get_feature_names()
-for i in range(true_k):
-    print("Cluster %d:" % i,)
-    for ind in order_centroids[i, :10]:
-        print(' %s' % terms[ind],)
-    print()
-
+#
+#
+df_array  = convert_to_df(DATA_PATH)
+# df_array.drop("Index",axis=1)
+# print df_array
+#
+model = TfidfVectorizer(stop_words="english")
+#
+#
+# model = train_model(clusters=3)
+print df_array["text"]
+model.fit(df_array["text"])
