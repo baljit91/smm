@@ -9,6 +9,8 @@ from sklearn.cluster import KMeans
 from sklearn.metrics import adjusted_rand_score
 import string
 from sklearn.feature_extraction.text import TfidfVectorizer
+import matplotlib.pyplot as plt
+import pylab
 
 
 DATA_PATH = os.path.join(os.getcwd(),"data")
@@ -58,7 +60,7 @@ def get_tweets(screen_name):
     outtweets= [[pre_processing(tweet)] for tweet in outtweets]
     return outtweets
 
-def write_to_df(input_tweets,handler_name):
+def write_to_csv(input_tweets,handler_name):
     save_path = DATA_PATH
     handler_name = "_".join([word.lower() for word in handler_name.split(" ")])
     completeName = os.path.join(save_path, handler_name + '.csv')
@@ -71,11 +73,21 @@ def write_to_df(input_tweets,handler_name):
 
 def convert_to_df(dir_name):
     df = pd.DataFrame()
+    hasher = {}
     for f in os.listdir(dir_name):
-        path =  os.path.join(DATA_PATH,f)
-        print path
-        df = pd.concat([df,pd.read_csv(path)])
-    return df
+        if not f.startswith('.'):
+            if not f in hasher.keys():
+                df = pd.read_csv(os.path.join(DATA_PATH,f),encoding="utf-8")
+                df.dropna()
+                df["text"] = df["text"].values.astype(str)
+                hasher[f] = df["text"]
+
+    return hasher
+
+    #     path =  os.path.join(DATA_PATH,f)
+    #     print path
+    #     df = pd.concat([df,pd.read_csv(path)])
+    # return df
 
     # X = []
     # for i in range(0,len(all_tweets)):
@@ -94,21 +106,21 @@ def train_model(clusters=3):
     model = KMeans(n_clusters=clusters)
     return model
 #
-for handle in hlist:
-    tweet_list = get_tweets(handle)
-    write_to_df(tweet_list,handle)
+# for handle in hlist:
+#     tweet_list = get_tweets(handle)
 
+# write_to_csv(tweet_list,handle)
+hasher = convert_to_df(DATA_PATH)
+tweet_df = pd.concat(hasher.values())
+model = TfidfVectorizer()
+res = model.fit_transform(tweet_df)
+kmeans_model = KMeans(init='random', max_iter=10000, n_init=1)
+kmeans_model.fit(res)
 
+centroids = kmeans_model.cluster_centers_
+print centroids
+plt.scatter(centroids[:, 0], centroids[:, 1],
+            marker='x', s=169, linewidths=3,
+            color='w', zorder=10)
 
-#
-#
-df_array  = convert_to_df(DATA_PATH)
-# df_array.drop("Index",axis=1)
-# print df_array
-#
-model = TfidfVectorizer(stop_words="english")
-#
-#
-# model = train_model(clusters=3)
-print df_array["text"]
-model.fit(df_array["text"])
+# plt.show()
