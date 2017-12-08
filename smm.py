@@ -18,22 +18,19 @@ DATA_PATH = os.path.join(os.getcwd(),"data")
 stopwords = stopwords.words("english")
 porter_stemmer = PorterStemmer()
 
-hlist = ["whitehouse",
+hlist = ["whitehouse","presssec","realdonaldtrump"
          #health
-         "cdc_ehealth","CDCgov","healthcaregov","healthfinder",
-         #fcc
-         "FCC",
-         "TheJusticeDept",
-         #derug health
-         "fda_drug_info","US_FDA","WomensHealthNIH","AIRNow","fda_drug_info",
+         "cdc_ehealth","CDCgov","healthcaregov","womenshealth",
+         #Home Affairs
+         "TheJusticeDept","StateDept","DeptofDefense"
          #education
-         "edpartners","usedgov"
+         "edpartners","usedgov","arneduncan","NAEYC"
          #Defence
-         ,"usarmy","ArmedwScience","usairforce","usnavy","uscoastguard",
+         ,"usarmy","usairforce","usnavy",
          #weather
-         "nws","NHC_Atlantic",
+         "nws","NOAA","NWSWPC"
          #finance
-         "libertystecon","GFOA","sbagov","USTreasury","FDICgov"]
+         "libertystecon","GFOA","sbagov","USTreasury"]
 
 def pre_processing(tweet):
     tweet = tweet.lower()
@@ -128,10 +125,16 @@ clusters = kmeans_model.labels_.tolist()
 
 tweet_df["cluster_id"] = clusters
 print tweet_df["cluster_id"].value_counts()
-centroids = kmeans_model.cluster_centers_
+print "Top words from KMeans"
+
+order_centroids = kmeans_model.cluster_centers_.argsort()[:, ::-1]
+for i in range(8):
+    print("Cluster {} : Words :".format(i))
+    for ind in order_centroids[i, :10]:
+        print(' %s' % feature_names[ind])
 # print centroids
-plt.scatter(centroids[:, 0], centroids[:, 1],
-            marker='x', s=169, linewidths=3,
-            color='w', zorder=10)
+# plt.scatter(centroids[:, 0], centroids[:, 1],
+#             marker='x', s=169, linewidths=3,
+#             color='w', zorder=10)
 
 # plt.show()
