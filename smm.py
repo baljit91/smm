@@ -11,6 +11,7 @@ import string
 from sklearn.feature_extraction.text import TfidfVectorizer
 import matplotlib.pyplot as plt
 import pylab
+import time
 
 
 DATA_PATH = os.path.join(os.getcwd(),"data")
@@ -26,7 +27,7 @@ hlist = ["whitehouse",
          #derug health
          "fda_drug_info","US_FDA","WomensHealthNIH","AIRNow","fda_drug_info",
          #education
-         "edpartners","usedgov","teachgov"
+         "edpartners","usedgov"
          #Defence
          ,"usarmy","ArmedwScience","usairforce","usnavy","uscoastguard",
          #weather
@@ -50,13 +51,14 @@ def get_tweets(screen_name):
     API_SECRET = "4oSOCpAP7zac4wb9aWzAvmNyY2gqzBIiBf7tsSFoFySlppTHej"
 
     auth = tweepy.AppAuthHandler(API_KEY, API_SECRET)
-    api = tweepy.API(auth, wait_on_rate_limit=True, wait_on_rate_limit_notify=True)
-
     alltweets = []
-    new_tweets = api.user_timeline(screen_name=screen_name, count=200)
-    alltweets.extend(new_tweets)
+    while(len(alltweets)<1000):
+        api = tweepy.API(auth, wait_on_rate_limit=True, wait_on_rate_limit_notify=True)
+        new_tweets = api.user_timeline(screen_name=screen_name, count=200)
+        alltweets.extend(new_tweets)
+        if not new_tweets:
+            break
 
-    # outtweets = [ for tweet in alltweets]
     outtweets= [[tweet.user.followers_count,tweet.retweet_count,pre_processing(tweet.text.encode("utf-8"))] for tweet in alltweets]
     return outtweets
 
@@ -109,20 +111,25 @@ def train_model(clusters=3):
     model = KMeans(n_clusters=clusters)
     return model
 #
-for handle in hlist:
-    tweet_list = get_tweets(handle)
-    write_to_csv(tweet_list,handle)
+# for handle in hlist:
+#     tweet_list = get_tweets(handle)
+#     write_to_csv(tweet_list,handle)
 
-    
+
 hasher = convert_to_df(DATA_PATH)
 tweet_df = pd.concat(hasher.values())
-model = TfidfVectorizer()
-res = model.fit_transform(tweet_df)
-kmeans_model = KMeans(init='random', max_iter=10000, n_init=1)
+# print tweet_df
+tf_idf_vectorizer = TfidfVectorizer(use_idf=True,ngram_range=(1,3))
+res = tf_idf_vectorizer.fit_transform(tweet_df)
+feature_names = tf_idf_vectorizer.get_feature_names()
+kmeans_model = KMeans(n_clusters=8)
 kmeans_model.fit(res)
+clusters = kmeans_model.labels_.tolist()
 
+tweet_df["cluster_id"] = clusters
+print tweet_df["cluster_id"].value_counts()
 centroids = kmeans_model.cluster_centers_
-print centroids
+# print centroids
 plt.scatter(centroids[:, 0], centroids[:, 1],
             marker='x', s=169, linewidths=3,
             color='w', zorder=10)
