@@ -2,7 +2,7 @@ import csv
 import tweepy
 import os.path
 from nltk.corpus import stopwords
-from nltk.stem.porter import PorterStemmer
+from nltk.stem.snowball import SnowballStemmer
 from sklearn.feature_extraction.text import TfidfVectorizer
 import pandas as pd
 from sklearn.cluster import KMeans
@@ -12,11 +12,13 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 import matplotlib.pyplot as plt
 import pylab
 import time
+from sklearn.decomposition import LatentDirichletAllocation
+
 
 
 DATA_PATH = os.path.join(os.getcwd(),"data")
 stopwords = stopwords.words("english")
-porter_stemmer = PorterStemmer()
+porter_stemmer = SnowballStemmer("english", ignore_stopwords=True)
 
 hlist = ["whitehouse","presssec","realdonaldtrump"
          #health
@@ -116,22 +118,40 @@ def train_model(clusters=3):
 hasher = convert_to_df(DATA_PATH)
 tweet_df = pd.concat(hasher.values())
 # print tweet_df
-tf_idf_vectorizer = TfidfVectorizer(use_idf=True,ngram_range=(1,3))
+tf_idf_vectorizer = TfidfVectorizer(ngram_range=(1,3))
 res = tf_idf_vectorizer.fit_transform(tweet_df)
-feature_names = tf_idf_vectorizer.get_feature_names()
+tf_feature_names = tf_idf_vectorizer.get_feature_names()
 kmeans_model = KMeans(n_clusters=8)
 kmeans_model.fit(res)
 clusters = kmeans_model.labels_.tolist()
 
-tweet_df["cluster_id"] = clusters
-print tweet_df["cluster_id"].value_counts()
-print "Top words from KMeans"
+# tweet_df["cluster_id"] = clusters
+# print tweet_df["cluster_id"].value_counts()
+# print "Top words from KMeans"
+#
+# order_centroids = kmeans_model.cluster_centers_.argsort()[:, ::-1]
+# for i in range(8):
+#     print("Cluster {} : Words :".format(i))
+#     for ind in order_centroids[i, :10]:
+#         print(' %s' % feature_names[ind])
 
-order_centroids = kmeans_model.cluster_centers_.argsort()[:, ::-1]
-for i in range(8):
-    print("Cluster {} : Words :".format(i))
-    for ind in order_centroids[i, :10]:
-        print(' %s' % feature_names[ind])
+
+
+no_topics = 4
+
+
+lda = LatentDirichletAllocation(max_iter=15, learning_method='online', learning_offset=50.,random_state=10).fit(res)
+
+
+
+def display_topics(model, feature_names, no_top_words):
+    for topic_idx, topic in enumerate(model.components_):
+        print ("Topic %d:" % (topic_idx))
+        print (" ".join([feature_names[i]
+                        for i in topic.argsort()[:-no_top_words - 1:-1]]))
+
+no_top_words = 10
+display_topics(lda, tf_feature_names, no_top_words)
 # print centroids
 # plt.scatter(centroids[:, 0], centroids[:, 1],
 #             marker='x', s=169, linewidths=3,
