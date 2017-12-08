@@ -56,15 +56,15 @@ def get_tweets(screen_name):
     new_tweets = api.user_timeline(screen_name=screen_name, count=200)
     alltweets.extend(new_tweets)
 
-    outtweets = [tweet.text.encode("utf-8") for tweet in alltweets]
-    outtweets= [[pre_processing(tweet)] for tweet in outtweets]
+    # outtweets = [ for tweet in alltweets]
+    outtweets= [[tweet.user.followers_count,tweet.retweet_count,pre_processing(tweet.text.encode("utf-8"))] for tweet in alltweets]
     return outtweets
 
 def write_to_csv(input_tweets,handler_name):
     save_path = DATA_PATH
     handler_name = "_".join([word.lower() for word in handler_name.split(" ")])
     completeName = os.path.join(save_path, handler_name + '.csv')
-    df = pd.DataFrame(input_tweets,columns = ["text"])
+    df = pd.DataFrame(input_tweets,columns = ["followers","rt","text"])
     df.index.name = "Index"
     df.to_csv(os.path.join(save_path,completeName))
     print "The csv file is saved {0}".format(completeName)
@@ -103,13 +103,17 @@ def bag_of_words(dataframe,file_location):
 
 
 def train_model(clusters=3):
+    # LDA Topic MOdelling here.
+    # Get Topics from unsupervised clusters
+    Visualize
     model = KMeans(n_clusters=clusters)
     return model
 #
-# for handle in hlist:
-#     tweet_list = get_tweets(handle)
+for handle in hlist:
+    tweet_list = get_tweets(handle)
+    write_to_csv(tweet_list,handle)
 
-# write_to_csv(tweet_list,handle)
+    
 hasher = convert_to_df(DATA_PATH)
 tweet_df = pd.concat(hasher.values())
 model = TfidfVectorizer()
