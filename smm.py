@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 import pylab
 import time
 from sklearn.decomposition import LatentDirichletAllocation
-
+from sklearn.decomposition import PCA
 
 
 DATA_PATH = os.path.join(os.getcwd(),"data")
@@ -100,7 +100,8 @@ print "Modelll"
 tf_idf_vectorizer = TfidfVectorizer(ngram_range=(1,3),smooth_idf=True)
 res = tf_idf_vectorizer.fit_transform(tweet_df)
 tf_feature_names = tf_idf_vectorizer.get_feature_names()
-kmeans_model = KMeans(n_clusters=8,max_iter=20)
+no_of_clusters= 8
+kmeans_model = KMeans(n_clusters=8,max_iter=5)
 kmeans_model.fit(res)
 clusters = kmeans_model.labels_.tolist()
 tweet_df["cluster_id"] = clusters
@@ -112,6 +113,15 @@ for i in range(8):
     print("Cluster {} : Words :".format(i))
     for ind in order_centroids[i, :10]:
         print(' %s' % tf_feature_names[ind])
+
+dim = 2
+#Setting dimensions to populate the graph.
+pca= PCA(n_components=2).fit(res.todense())
+data2D = pca.transform(res)
+plt.scatter(data2D[:,0], data2D[:,1], c=clusters)
+plt.show()
+
+
 
 
 
@@ -134,9 +144,8 @@ for i in range(8):
 
 # from sklearn.cluster import KMeans
 #
-plt.figure(figsize=(40, 50))
-plt.scatter(res[:,0], res[:,1])
-plt.show()
+# plt.figure(figsize=(40, 50))
+# plt.scatter(res[:,0], res[:,1])
 # print centroids
 # plt.scatter(centroids[:, 0], centroids[:, 1],
 #             marker='x', s=169, linewidths=3,
