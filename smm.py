@@ -85,30 +85,8 @@ def convert_to_df(dir_name):
 
     return hasher
 
-    #     path =  os.path.join(DATA_PATH,f)
-    #     print path
-    #     df = pd.concat([df,pd.read_csv(path)])
-    # return df
-
-    # X = []
-    # for i in range(0,len(all_tweets)):
-    #     X.append(all_tweets[i][0])
-    # df = pd.DataFrame(X)
-    # return df
-
-def bag_of_words(dataframe,file_location):
-    tf = TfidfVectorizer(stop_words="english")
-    transformed_input = tf.fit_transform(dataframe)
-    transformed_input = transformed_input.toarray()
-    return tf
 
 
-def train_model(clusters=3):
-    # LDA Topic MOdelling here.
-    # Get Topics from unsupervised clusters
-    Visualize
-    model = KMeans(n_clusters=clusters)
-    return model
 #
 # for handle in hlist:
 #     tweet_list = get_tweets(handle)
@@ -118,40 +96,47 @@ def train_model(clusters=3):
 hasher = convert_to_df(DATA_PATH)
 tweet_df = pd.concat(hasher.values())
 # print tweet_df
-tf_idf_vectorizer = TfidfVectorizer(ngram_range=(1,3))
+print "Modelll"
+tf_idf_vectorizer = TfidfVectorizer(ngram_range=(1,3),smooth_idf=True)
 res = tf_idf_vectorizer.fit_transform(tweet_df)
 tf_feature_names = tf_idf_vectorizer.get_feature_names()
-kmeans_model = KMeans(n_clusters=8)
+kmeans_model = KMeans(n_clusters=8,max_iter=20)
 kmeans_model.fit(res)
 clusters = kmeans_model.labels_.tolist()
+tweet_df["cluster_id"] = clusters
+print tweet_df["cluster_id"].value_counts()
+print "Top words from KMeans"
 
-# tweet_df["cluster_id"] = clusters
-# print tweet_df["cluster_id"].value_counts()
-# print "Top words from KMeans"
+order_centroids = kmeans_model.cluster_centers_.argsort()[:, ::-1]
+for i in range(8):
+    print("Cluster {} : Words :".format(i))
+    for ind in order_centroids[i, :10]:
+        print(' %s' % tf_feature_names[ind])
+
+
+
+# no_topics = 4
+
+
+# lda = LatentDirichletAllocation(max_iter=15, learning_method='online', learning_offset=50.,random_state=10).fit(res)
 #
-# order_centroids = kmeans_model.cluster_centers_.argsort()[:, ::-1]
-# for i in range(8):
-#     print("Cluster {} : Words :".format(i))
-#     for ind in order_centroids[i, :10]:
-#         print(' %s' % feature_names[ind])
+#
+#
+# def display_topics(model, feature_names, no_top_words):
+#     for topic_idx, topic in enumerate(model.components_):
+#         print ("Topic %d:" % (topic_idx))
+#         print (" ".join([feature_names[i]
+#                         for i in topic.argsort()[:-no_top_words - 1:-1]]))
+#
+# no_top_words = 10
+# display_topics(lda, tf_feature_names, no_top_words)
 
 
-
-no_topics = 4
-
-
-lda = LatentDirichletAllocation(max_iter=15, learning_method='online', learning_offset=50.,random_state=10).fit(res)
-
-
-
-def display_topics(model, feature_names, no_top_words):
-    for topic_idx, topic in enumerate(model.components_):
-        print ("Topic %d:" % (topic_idx))
-        print (" ".join([feature_names[i]
-                        for i in topic.argsort()[:-no_top_words - 1:-1]]))
-
-no_top_words = 10
-display_topics(lda, tf_feature_names, no_top_words)
+# from sklearn.cluster import KMeans
+#
+plt.figure(figsize=(40, 50))
+plt.scatter(res[:,0], res[:,1])
+plt.show()
 # print centroids
 # plt.scatter(centroids[:, 0], centroids[:, 1],
 #             marker='x', s=169, linewidths=3,
